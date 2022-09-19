@@ -26,6 +26,7 @@ initramfs: init.sh
 	cp $^ $(BUSYBOX_INITRAMFS)/init
 	rm -rf $(BUSYBOX_INITRAMFS)/test_progs
 	cp -r test_progs/ $(BUSYBOX_INITRAMFS)/test_progs
+	$(MAKE) -C $(BUSYBOX_INITRAMFS)/test_progs
 	(cd $(BUSYBOX_INITRAMFS) && `find . | cpio -o -H newc | gzip > ../busybox_initramfs.cpio.gz`)
 
 linux:

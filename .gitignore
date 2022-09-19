@@ -226,3 +226,7 @@ TAGS
 # user-supplied scripts
 #
 /embed
+
+
+/build
+/busybox-1.33.2

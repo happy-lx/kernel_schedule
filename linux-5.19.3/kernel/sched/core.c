@@ -4332,6 +4332,10 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->rt.on_rq		= 0;
 	p->rt.on_list		= 0;
 
+	INIT_LIST_HEAD(&p->comp3520_se.run_list);
+	p->comp3520_se.on_rq = 0;
+	p->comp3520_se.time_left = 5;
+
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
 #endif

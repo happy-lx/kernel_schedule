@@ -537,6 +537,7 @@ struct sched_statistics {
 struct comp3520_sched_entity {
 	struct list_head run_list;
 	bool on_rq;
+	int time_left;
 
 	// Don't worry about this
 	struct sched_statistics statistics;
