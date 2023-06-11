@@ -8,6 +8,8 @@ const struct sched_class comp3520_sched_class;
 static inline struct task_struct * comp3520_task_of(struct comp3520_sched_entity *se);
 static inline struct comp3520_sched_entity * comp3520_entity_of(struct list_head* head);
 
+int COMP3520_PRIORITY_QUEUE_TIME_SLICE[COMP3520_PRIORITY_QUEUE_SIZE] = {5, 10, 15, 30, 100};
+
 // TODO: Complete me
 static void enqueue_task_comp3520(struct rq *rq, struct task_struct *p,
 				  int flags)
@@ -17,9 +19,8 @@ static void enqueue_task_comp3520(struct rq *rq, struct task_struct *p,
 	struct comp3520_sched_entity* se = &p->comp3520_se;
 	comp3520_rq->nr_running++;
 	se->on_rq = 1;
-	// se->time_left = 5;
 	p->on_rq = 1;
-	list_add_tail(&(se->run_list), &(comp3520_rq->run_list));
+	list_add_tail(&(se->run_list), &(comp3520_rq->run_lists[se->inner_prio]));
 	add_nr_running(rq, 1);
 }
 
@@ -50,7 +51,8 @@ static void yield_task_comp3520(struct rq *rq)
 	struct comp3520_rq* comp3520_rq = &rq->comp3520_rq;
 	struct task_struct * p = rq->curr;
 
-	if(!(p->comp3520_se.on_rq)) {
+	if(p->comp3520_se.on_rq) {
+		dequeue_task_comp3520(rq, p, 0);
 		enqueue_task_comp3520(rq, p, 0);
 	}
 	// rq->curr = comp3520_task_of(comp3520_entity_of(comp3520_rq->run_list.next));
@@ -66,19 +68,22 @@ static void check_preempt_curr_comp3520(struct rq *rq, struct task_struct *p,
 	struct comp3520_sched_entity* se = &p->comp3520_se;
 	struct comp3520_sched_entity* now_se = &rq->curr->comp3520_se;
 
-	if(se->time_left < now_se->time_left || now_se->time_left < 0) {
+	if(now_se->time_left < 0 || se->inner_prio < now_se->inner_prio || (se->inner_prio == now_se->inner_prio && se->time_left < now_se->time_left)) {
 		// pr_info("NOTE: preempted!!!");
+		yield_task_comp3520(rq);
+		list_move(&se->run_list, rq->comp3520_rq.run_lists + se->inner_prio);
 		resched_curr(rq);
-		// rq->curr = p;
-		// enqueue_task_comp3520(rq, comp3520_task_of(se), 0);
 	}
 }
 
 // TODO: Complete me
 static void set_next_task_comp3520(struct rq *rq, struct task_struct *p, bool first)
 {
-	// pr_info("set_next_task_comp3520\n");
-	// rq->curr = p;
+	pr_info("NOTE: set_next_task_comp3520\n");
+	struct comp3520_sched_entity* se = &p->comp3520_se;
+	// move to head
+	if(se->on_rq)
+		list_move(&se->run_list, rq->comp3520_rq.run_lists + se->inner_prio);
 }
 
 // TODO: Complete me
@@ -91,7 +96,9 @@ static void task_tick_comp3520(struct rq *rq, struct task_struct *curr,
 	se->time_left--;
 
 	if(se->time_left <= 0) {
-		se->time_left = 5;
+		se->inner_prio = (se->inner_prio + 1) % COMP3520_PRIORITY_QUEUE_SIZE;
+		se->time_left = COMP3520_PRIORITY_QUEUE_TIME_SLICE[se->inner_prio];
+		yield_task_comp3520(rq);
 		resched_curr(rq);
 	}
 
@@ -111,8 +118,16 @@ struct task_struct *pick_next_task_comp3520(struct rq *rq)
 		// update_idle_rq_clock_pelt(rq);
 		return NULL;
 	}
+	struct task_struct * p = NULL;
 	struct comp3520_rq* comp3520_rq = &rq->comp3520_rq;
-	struct task_struct * p = comp3520_task_of(comp3520_entity_of(comp3520_rq->run_list.next));
+
+	for(int i = 0; i < COMP3520_PRIORITY_QUEUE_SIZE; i++) {
+		if(list_empty(comp3520_rq->run_lists + i)) {
+			continue;
+		}
+		p = comp3520_task_of(comp3520_entity_of(comp3520_rq->run_lists[i].next));
+		break;
+	}
 	return p;
 
 }
@@ -126,6 +141,10 @@ prio_changed_comp3520(struct rq *rq, struct task_struct *p, int oldprio) {
 
 }
 
+static void update_curr_comp3520(struct rq *rq) {
+	
+}
+
 const struct sched_class
 	comp3520_sched_class __section("__comp3520_sched_class") = {
 		.enqueue_task = enqueue_task_comp3520,
@@ -137,6 +156,7 @@ const struct sched_class
 		.pick_next_task = pick_next_task_comp3520,
 		.put_prev_task		= put_prev_task_comp3520,
 		.prio_changed = prio_changed_comp3520,
+		.update_curr = update_curr_comp3520,
 
 #ifdef CONFIG_SMP
 		.balance = balance_comp3520,
@@ -172,7 +192,8 @@ static inline struct comp3520_sched_entity * comp3520_entity_of(struct list_head
 void init_comp3520_rq(struct comp3520_rq *comp3520_rq)
 {
 	comp3520_rq->nr_running = 0;
-	INIT_LIST_HEAD(&comp3520_rq->run_list);
+	for(int i = 0; i < COMP3520_PRIORITY_QUEUE_SIZE; i++)
+		INIT_LIST_HEAD(comp3520_rq->run_lists + i);
 }
 
 #ifdef CONFIG_SCHED_DEBUG

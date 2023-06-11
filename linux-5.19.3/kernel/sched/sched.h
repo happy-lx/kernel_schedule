@@ -520,9 +520,11 @@ struct cfs_bandwidth { };
 
 #endif	/* CONFIG_CGROUP_SCHED */
 
+#define COMP3520_PRIORITY_QUEUE_SIZE 5
+
 struct comp3520_rq {
 	int nr_running;
-	struct list_head run_list;
+	struct list_head run_lists[COMP3520_PRIORITY_QUEUE_SIZE];
 
 };
 
